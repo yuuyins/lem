@@ -1,6 +1,8 @@
 "use strict";
 
-const { Menu, dialog } = require("electron");
+const { Menu, dialog, app } = require("electron");
+
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function setMenu(win) {
   const template = [
@@ -70,6 +72,19 @@ function setMenu(win) {
           click: () => {
             win.webContents.send("command", ["exit-lem"]);
           },
+        },
+        {
+          type: "separator",
+        },
+        {
+          label: "benchmark",
+          click: () => {
+            win.webContents.send("benchmark_start");
+            for (let i = 0; i < 50; i++) {
+              wait(i * 50).then(() => win.webContents.send("command", ["next-line"]));
+            }
+            wait(5000).then(() => win.webContents.send("benchmark_save"));
+          }
         },
       ],
     },

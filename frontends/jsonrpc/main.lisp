@@ -16,8 +16,8 @@
 (defvar *port* 50879)
 
 (defvar *view-id-counter* 0)
-(defvar *display-width* 80)
-(defvar *display-height* 24)
+(defvar *display-width* 450)
+(defvar *display-height* 120)
 
 (defvar *main-thread*)
 (defvar *editor-thread*)
@@ -319,3 +319,33 @@
 (lem:add-hook lem:*after-init-hook*
               (lambda ()
                 (swank:create-server :dont-close t :port 12345)))
+
+(define-command tetra () ()
+  (delete-other-windows)
+  (let ((width (round (display-width) 4))
+        (window (current-window)))
+    (split-window-horizontally (current-window) width)
+    (other-window 1)
+    (split-window-horizontally (current-window) width)
+    (other-window 1)
+    (split-window-horizontally (current-window) width)
+    (setf (current-window) window)))
+
+(define-command benchmark-start () ()
+  (delete-other-windows)
+  (switch-to-buffer (find-file-buffer "~/tmp/sample.txt"))
+  (tetra))
+
+(defun gen-file (file nlines ncols)
+  (with-open-file (out file :direction :output :if-exists :supersede)
+    (let ((current-char #\a))
+      (flet ((next-char ()
+               (prog1 current-char
+                 (if (char= current-char #\z)
+                     (setf current-char #\a)
+                     (setf current-char (code-char (1+ (char-code current-char))))))))
+        (loop :for i :from 1 :to nlines
+              :for c := (next-char)
+              :do (format out "~3D: ~A~%" i (make-string ncols :initial-element c)))))))
+
+;; (gen-file "~/tmp/sample.txt" 100 95)

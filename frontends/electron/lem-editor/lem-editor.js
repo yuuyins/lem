@@ -102,6 +102,38 @@ class LemSidePane extends HTMLElement {
   }
 }
 
+class Benchmark {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.table = new Map();
+  }
+
+  finish() {
+    let buffer = "";
+    for (let [method, total] of Array.from(this.table.entries()).sort((x, y) => y[1][0] - x[1][0])) {
+      let line = `${method}`.padEnd(20);
+      line += `${total[0] / (1000 * 1000)}ms,`;
+      line = line.padEnd(40);
+      line +=`called ${total[1]} times\n`;
+      buffer += line;
+    }
+    fs.writeFile("/home/user/benchmark.txt", buffer, (error) => { console.log(error); });
+    alert(buffer);
+  }
+
+  step(method, hrtime) {
+    if (this.table.has(method)) {
+      const value = this.table.get(method);
+      this.table.set(method, [hrtime[1] + value[0], value[1] + 1]);
+    } else {
+      this.table.set(method, [hrtime[1], 1]);
+    }
+  }
+}
+
 class LemEditor extends HTMLElement {
   constructor() {
     super();
@@ -217,6 +249,16 @@ class LemEditor extends HTMLElement {
       this.emitInput(kindCommand, message);
     });
 
+    this.benchmark = new Benchmark();
+
+    ipcRenderer.on("benchmark_start", (event, message) => {
+      this.benchmark.reset();
+    });
+
+    ipcRenderer.on("benchmark_save", (event, message) => {
+      this.benchmark.finish();
+    });
+
     // create input text box;
     this.picker = new Picker(this);
 
@@ -236,7 +278,12 @@ class LemEditor extends HTMLElement {
   }
 
   on(method, handler) {
-    this.rpcConnection.onNotification(method, handler);
+    const fn = (...args) => {
+      const start = process.hrtime();
+      handler(...args);
+      this.benchmark.step(method, process.hrtime(start));
+    };
+    this.rpcConnection.onNotification(method, fn);
   }
 
   setPane(e) {
