@@ -249,14 +249,15 @@ class LemEditor extends HTMLElement {
       this.emitInput(kindCommand, message);
     });
 
-    this.benchmark = new Benchmark();
+    this.benchmark = null;
 
     ipcRenderer.on("benchmark_start", (event, message) => {
-      this.benchmark.reset();
+      this.benchmark = new Benchmark();
     });
 
     ipcRenderer.on("benchmark_save", (event, message) => {
       this.benchmark.finish();
+      this.benchmark = null;
     });
 
     // create input text box;
@@ -281,7 +282,10 @@ class LemEditor extends HTMLElement {
     const fn = (...args) => {
       const start = process.hrtime();
       handler(...args);
-      this.benchmark.step(method, process.hrtime(start));
+      if (this.benchmark) {
+        this.benchmark.step(method, process.hrtime(start));
+      }
+      //console.log(method, ...args);
     };
     this.rpcConnection.onNotification(method, fn);
   }
